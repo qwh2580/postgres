@@ -3070,7 +3070,16 @@ struct config_int ConfigureNamesInt[] =
 		200, 10, 10000,
 		NULL, NULL, NULL
 	},
-
+	{
+		{"bgwriter_flush_polling", PGC_SIGHUP, RESOURCES_BGWRITER,
+			gettext_noop("bgwriter_flush_polling sleep time between rounds."),
+			NULL,
+			GUC_UNIT_MS
+		},
+		&BgWriterDelay,
+		60000, 30000, 120000,
+		NULL, NULL, NULL
+	},
 	{
 		{"bgwriter_lru_maxpages", PGC_SIGHUP, RESOURCES_BGWRITER,
 			gettext_noop("Background writer maximum number of LRU pages to flush per round."),
