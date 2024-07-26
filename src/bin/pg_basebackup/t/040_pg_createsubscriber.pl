@@ -227,10 +227,6 @@ command_fails(
 	],
 	'primary server is in recovery');
 
-# Insert another row on node P and wait node S to catch up
-$node_p->safe_psql($db1, "INSERT INTO tbl1 VALUES('second row')");
-$node_p->wait_for_replay_catchup($node_s);
-
 # Check some unmet conditions on node P
 $node_p->append_conf(
 	'postgresql.conf', q{
@@ -305,6 +301,14 @@ my $result = $node_s->safe_psql('postgres',
 	"SELECT slot_name FROM pg_replication_slots WHERE slot_name = '$fslotname' AND synced AND NOT temporary"
 );
 is($result, 'failover_slot', 'failover slot is synced');
+
+# Insert another row on node P and wait node S to catch up. We
+# intentionally performed this insert after syncing logical slot
+# as otherwise the local slot's (created during synchronization of
+# slot) xmin on standby could be ahead of the remote slot leading
+# to failure in synchronization.
+$node_p->safe_psql($db1, "INSERT INTO tbl1 VALUES('second row')");
+$node_p->wait_for_replay_catchup($node_s);
 
 # Create subscription to test its removal
 my $dummy_sub = 'regress_sub_dummy';
@@ -410,16 +414,16 @@ $result = $node_s->safe_psql($db1,
 );
 is($result, qq(0), 'failover slot was removed');
 
-# Check result on database $db1
+# Check result in database $db1
 $result = $node_s->safe_psql($db1, 'SELECT * FROM tbl1');
 is( $result, qq(first row
 second row
 third row),
-	"logical replication works on database $db1");
+	"logical replication works in database $db1");
 
-# Check result on database $db2
+# Check result in database $db2
 $result = $node_s->safe_psql($db2, 'SELECT * FROM tbl2');
-is($result, qq(row 1), "logical replication works on database $db2");
+is($result, qq(row 1), "logical replication works in database $db2");
 
 # Different system identifier?
 my $sysid_p = $node_p->safe_psql('postgres',
