@@ -692,23 +692,30 @@ get_cheapest_fractional_path_for_pathkeys(List *paths,
 
 /*
  * get_cheapest_parallel_safe_total_inner
- *	  Find the unparameterized parallel-safe path with the least total cost.
+ *	 Skip paths that do not meet the criteria,find the unparameterized parallel-safe path with the least total cost,
+ * and return NULL if it does not exist.
  */
 Path *
 get_cheapest_parallel_safe_total_inner(List *paths)
 {
 	ListCell   *l;
-
+        Path	   *matched_path = NULL;
 	foreach(l, paths)
 	{
 		Path	   *innerpath = (Path *) lfirst(l);
 
-		if (innerpath->parallel_safe &&
-			bms_is_empty(PATH_REQ_OUTER(innerpath)))
-			return innerpath;
+		if (!innerpath->parallel_safe ||
+			!bms_is_empty(PATH_REQ_OUTER(innerpath)))
+			continue;
+
+		if (matched_path != NULL &&
+			compare_path_costs(matched_path, innerpath, TOTAL_COST) <= 0)
+			continue;
+
+		matched_path = innerpath;
 	}
 
-	return NULL;
+	return matched_path;
 }
 
 /****************************************************************************
